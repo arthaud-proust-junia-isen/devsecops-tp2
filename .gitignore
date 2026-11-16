@@ -1,0 +1,4 @@
+.env
+.scannerwork/
+__pycache__/
+.pytest_cache/
