@@ -1,0 +1,38 @@
+test_payload_classique_ne_renvoie_aucun_utilisateur (test_sqli_low.SqliLowTest.test_payload_classique_ne_renvoie_aucun_utilisateur) ... FAIL
+test_quote_dans_le_mot_de_passe_ne_casse_pas_la_requete (test_sqli_low.SqliLowTest.test_quote_dans_le_mot_de_passe_ne_casse_pas_la_requete) ... FAIL
+test_utilisateur_existant_inchange (test_sqli_low.SqliLowTest.test_utilisateur_existant_inchange) ... ok
+test_utilisateur_inconnu (test_sqli_low.SqliLowTest.test_utilisateur_inconnu) ... ok
+
+======================================================================
+FAIL: test_payload_classique_ne_renvoie_aucun_utilisateur (test_sqli_low.SqliLowTest.test_payload_classique_ne_renvoie_aucun_utilisateur)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/arthaud/dev/junia/devsecops/tp2/TIWAP/tests/test_sqli_low.py", line 26, in test_payload_classique_ne_renvoie_aucun_utilisateur
+    self.assertEqual(result, [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+AssertionError: Lists differ: [(1, 'admin'), (2, 'johndoe'), (3, 'chavaA[34 chars]or')] != []
+
+First list contains 5 additional elements.
+First extra element 0:
+(1, 'admin')
+
++ []
+- [(1, 'admin'),
+-  (2, 'johndoe'),
+-  (3, 'chavaAlice'),
+-  (4, 'JenAlex'),
+-  (5, 'pconnor')]
+
+======================================================================
+FAIL: test_quote_dans_le_mot_de_passe_ne_casse_pas_la_requete (test_sqli_low.SqliLowTest.test_quote_dans_le_mot_de_passe_ne_casse_pas_la_requete)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/arthaud/dev/junia/devsecops/tp2/TIWAP/tests/test_sqli_low.py", line 30, in test_quote_dans_le_mot_de_passe_ne_casse_pas_la_requete
+    self.assertNotIsInstance(result, sqlite3.Error)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: OperationalError('near "apostrophe": syntax error') is an instance of <class 'sqlite3.Error'>
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.003s
+
+FAILED (failures=2)
