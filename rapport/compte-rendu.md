@@ -148,6 +148,10 @@ Second scan : [`preuves/scan-apres.log`](preuves/scan-apres.log).
 
 Le tableau de bord ne bouge pas, ce qui est cohérent : l'outil ne voyait pas l'injection, il ne peut pas voir sa disparition. La preuve de la correction vient du diff et des tests.
 
+![Projet TIWAP dans SonarQube après le second scan, vue « New Code »](capture-sonarqube.png)
+
+La vue « New Code » après correction affiche un Quality Gate validé et aucun nouveau problème. La couverture est de 0 % sur les 2 lignes modifiées : les tests tournent avec `unittest`, sans rapport de couverture envoyé à SonarQube. Le Quality Gate passe malgré le seuil de 80 %, parce que SonarQube ignore les conditions de couverture quand le nouveau code est très court. La carte « Security Hotspots » est marquée « Deprecated » dans cette version, ce qui explique les 0 hotspots : les résultats de ce type apparaissent directement parmi les problèmes de sécurité.
+
 Restent vulnérables dans `SQLi.py` : `sqli_medium`, `sqli_hard`, les trois `blind_sqli_*` et `secure_login` (ligne 145). Cette dernière est intéressante : elle retire les apostrophes et les guillemets avant d'insérer le nom dans une f-string. C'est un filtrage par liste noire, pas une requête paramétrée, et l'injection reste possible selon le contexte. Ces fonctions sont gardées telles quelles parce que TIWAP sert à s'entraîner sur ces failles.
 
 ## 7. Fiche de traitement (contexte NOVA SERVICES)
