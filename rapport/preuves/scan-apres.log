@@ -1,0 +1,151 @@
+[4m>>>> Executing external compose provider "/opt/homebrew/bin/podman-compose". Please see podman-compose(1) for how to disable this message. <<<<
+
+[0m97106b46c3da2dcd9bcdb89cfb4b9dec61ff62a6f17e77bee6c5487145696e46
+ea637e49c64b7edb5fe6ef689921771246323bc205912c96871cf027bd508287
+time="2026-11-16T16:10:35+01:00" level=warning msg="The input device is not a TTY. The --tty and --interactive flags might not work properly"
+WARNING: image platform (linux/amd64) does not match the expected platform (linux/arm64)
+15:10:42.136 INFO  Scanner configuration file: /opt/sonar-scanner/conf/sonar-scanner.properties
+15:10:42.167 INFO  Project root configuration file: /usr/src/sonar-project.properties
+15:10:42.315 INFO  SonarScanner CLI 8.4.0.16527
+15:10:42.413 INFO  Linux 6.18.10-200.fc43.aarch64 amd64
+15:10:52.220 INFO  Communicating with SonarQube Community Build 26.11.0.134175
+15:10:52.234 INFO  JRE provisioning: os[linux], arch[x86_64]
+15:11:09.607 INFO  Starting SonarScanner Engine...
+15:11:09.615 INFO  Java 21.0.13 Eclipse Adoptium (64-bit)
+15:11:20.263 INFO  Load global settings
+15:11:23.137 INFO  Load global settings (done) | time=2872ms
+15:11:23.261 INFO  Server id: 243B8A4D-AaHktQjkvbZqQNUZmxvJ
+15:11:28.925 INFO  Loading required plugins
+15:11:28.940 INFO  Load plugins index
+15:11:29.774 INFO  Load plugins index (done) | time=801ms
+15:11:29.805 INFO  Load/download plugins
+15:11:35.857 INFO  Load/download plugins (done) | time=6088ms
+15:11:39.133 INFO  Load project settings for component key: 'tiwap'
+15:11:39.537 INFO  Load project settings for component key: 'tiwap' (done) | time=377ms
+15:11:40.100 INFO  Process project properties
+15:11:40.360 INFO  Process project properties (done) | time=266ms
+15:11:40.470 INFO  Project key: tiwap
+15:11:40.471 INFO  Base dir: /usr/src
+15:11:40.473 INFO  Working dir: /tmp/.scannerwork
+15:11:40.933 INFO  Load quality profiles
+15:11:41.399 INFO  Load quality profiles (done) | time=466ms
+15:11:41.536 WARN  SCM provider autodetection failed. Please use "sonar.scm.provider" to define SCM of your project, or disable the SCM Sensor in the project settings.
+15:11:41.627 INFO  Load active rules
+15:11:43.248 INFO  Load active rules (done) | time=1616ms
+15:11:43.314 INFO  Load analysis cache
+15:11:43.516 INFO  Load analysis cache | time=197ms
+15:11:44.104 INFO  Preprocessing files...
+15:11:44.629 INFO  5 languages detected in 51 preprocessed files (done) | time=512ms
+15:11:44.639 INFO  34 files ignored because of inclusion/exclusion patterns
+15:11:44.654 INFO  1 directory skipped because of exclusion patterns (content not counted)
+15:11:44.679 INFO  Loading plugins for detected languages
+15:11:44.686 INFO  Load/download plugins
+15:11:50.837 INFO  Load/download plugins (done) | time=6125ms
+15:11:52.552 INFO  Load project repositories
+15:11:54.042 INFO  Load project repositories (done) | time=1461ms
+15:11:54.880 INFO  Indexing files...
+15:11:54.889 INFO  Project configuration:
+15:11:54.903 INFO    Excluded sources: tests/**, **/*.js, **/*.html, **/*.css
+15:11:55.412 INFO  51 files indexed (done) | time=515ms
+15:11:55.467 INFO  Quality profile for docker: Sonar way core
+15:11:55.470 INFO  Quality profile for php: Sonar way core
+15:11:55.478 INFO  Quality profile for py: Sonar way core
+15:11:55.496 INFO  Quality profile for xml: Sonar way core
+15:11:55.506 INFO  Quality profile for yaml: Sonar way comprehensive
+15:11:55.513 INFO  ------------- Run sensors on module TIWAP
+15:11:56.635 INFO  Load metrics repository
+15:11:58.146 INFO  Load metrics repository (done) | time=1511ms
+15:12:04.196 INFO  Reflections took 843 ms to scan 1 urls, producing 30 keys and 313 values
+15:12:08.763 INFO  Sensor IaC YAML File Type Classification Sensor [iac]
+15:12:08.846 INFO  Sensor IaC YAML File Type Classification Sensor [iac] (done) | time=91ms
+15:12:08.858 INFO  Sensor Python Sensor [python]
+15:12:12.062 INFO  Starting global symbols computation
+15:12:12.079 INFO  15 source files to be analyzed
+15:12:16.423 INFO  15/15 source files have been analyzed
+15:12:16.434 INFO  Finished step global symbols computation in 4362ms
+15:12:16.682 INFO  Starting rules execution
+15:12:16.689 INFO  15 source files to be analyzed
+15:12:26.753 INFO  9/15 files analyzed, current files: app.py, db_manager.py, mongodb_manager.py, ...
+15:12:33.794 INFO  15/15 source files have been analyzed
+15:12:33.803 INFO  Finished step rules execution in 17022ms
+15:12:33.807 INFO  The Python analyzer was able to leverage cached data from previous analyses for 0 out of 15 files. These files were not parsed.
+15:12:33.808 INFO  Sensor Python Sensor [python] (done) | time=24924ms
+15:12:33.811 INFO  Sensor Cobertura Sensor for Python coverage [python]
+15:12:33.854 INFO  Sensor Cobertura Sensor for Python coverage [python] (done) | time=75ms
+15:12:33.858 INFO  Sensor PythonXUnitSensor [python]
+15:12:33.872 INFO  Sensor PythonXUnitSensor [python] (done) | time=19ms
+15:12:33.874 INFO  Sensor Python Dependency Sensor [python]
+15:12:33.963 INFO  Sensor Python Dependency Sensor [python] (done) | time=90ms
+15:12:33.965 INFO  Sensor HTML [web]
+15:12:34.135 INFO  Sensor HTML [web] (done) | time=171ms
+15:12:34.137 INFO  Sensor PHP sensor [php]
+15:12:35.121 INFO  Starting PHP symbol indexer
+15:12:35.615 INFO  2 source files to be analyzed
+15:12:36.303 INFO  2/2 source files have been analyzed
+15:12:36.310 INFO  Cached information of global symbols will be used for 0 out of 2 files. Global symbols were recomputed for the remaining files.
+15:12:36.624 INFO  Starting PHP rules
+15:12:36.629 INFO  2 source files to be analyzed
+15:12:36.801 INFO  2/2 source files have been analyzed
+15:12:36.805 INFO  The PHP analyzer was able to leverage cached data from previous analyses for 0 out of 2 files. These files were not parsed.
+15:12:36.808 INFO  Sensor PHP sensor [php] (done) | time=2665ms
+15:12:36.810 INFO  Sensor Analyzer for "php.ini" files [php]
+15:12:36.862 INFO  Sensor Analyzer for "php.ini" files [php] (done) | time=56ms
+15:12:36.871 INFO  Sensor PHPUnit report sensor [php]
+15:12:36.877 INFO  No PHPUnit tests reports provided (see 'sonar.php.tests.reportPath' property)
+15:12:36.879 INFO  No PHPUnit coverage reports provided (see 'sonar.php.coverage.reportPaths' property)
+15:12:36.880 INFO  Sensor PHPUnit report sensor [php] (done) | time=10ms
+15:12:36.882 INFO  Sensor IaC CloudFormation Sensor [iac]
+15:12:36.883 INFO  There are no files to be analyzed for the CloudFormation language
+15:12:36.885 INFO  Sensor IaC CloudFormation Sensor [iac] (done) | time=4ms
+15:12:36.886 INFO  Sensor IaC cfn-lint report Sensor [iac]
+15:12:36.888 INFO  Sensor IaC cfn-lint report Sensor [iac] (done) | time=6ms
+15:12:36.890 INFO  Sensor IaC Kustomization Sensor [iac]
+15:12:36.898 INFO  Sensor IaC Kustomization Sensor [iac] (done) | time=11ms
+15:12:36.912 INFO  Sensor IaC hadolint report Sensor [iac]
+15:12:36.916 INFO  Sensor IaC hadolint report Sensor [iac] (done) | time=0ms
+15:12:36.931 INFO  Sensor Java Config Sensor [iac]
+15:12:36.935 INFO  There are no files to be analyzed for the Java language
+15:12:36.935 INFO  Sensor Java Config Sensor [iac] (done) | time=0ms
+15:12:36.936 INFO  Sensor IaC Docker Sensor [iac]
+15:12:37.399 INFO  1 source file to be analyzed
+15:12:37.696 INFO  1/1 source file has been analyzed
+15:12:37.697 INFO  Sensor IaC Docker Sensor [iac] (done) | time=796ms
+15:12:37.697 INFO  Sensor IaC Kubernetes Sensor [iac]
+15:12:38.151 INFO  There are no files to be analyzed for the Kubernetes language
+15:12:38.153 INFO  Sensor IaC Kubernetes Sensor [iac] (done) | time=451ms
+15:12:38.154 INFO  Sensor TextAndSecretsSensor [text]
+15:12:38.335 INFO  Available processors: 4
+15:12:38.338 INFO  Using 4 threads for analysis.
+15:12:42.248 INFO  Start fetching files for the text and secrets analysis
+15:12:42.605 INFO  Using Git CLI to retrieve dirty files
+15:12:42.682 WARN  Retrieving only language associated files, make sure to run the analysis inside a git repository to make use of inclusions specified via "sonar.text.inclusions"
+15:12:42.690 INFO  Starting the text and secrets analysis
+15:12:42.702 INFO  19 source files to be analyzed for the text and secrets analysis
+15:12:43.702 INFO  19/19 source files have been analyzed for the text and secrets analysis
+15:12:43.748 INFO  Sensor TextAndSecretsSensor [text] (done) | time=5591ms
+15:12:43.952 INFO  ------------- Run sensors on project
+15:12:48.154 INFO  Sensor JavaScript/TypeScript/CSS analysis [javascript]
+15:12:48.227 INFO  No input files found for analysis
+15:12:48.247 INFO  Hit the cache for 0 out of 0
+15:12:48.263 INFO  Miss the cache for 0 out of 0
+15:12:48.267 INFO  Sensor JavaScript/TypeScript/CSS analysis [javascript] (done) | time=113ms
+15:12:48.275 INFO  Sensor IaC Project Sensor [iac]
+15:12:48.318 INFO  Sensor IaC Project Sensor [iac] (done) | time=68ms
+15:12:48.327 INFO  Sensor Zero Coverage Sensor
+15:12:48.470 INFO  Sensor Zero Coverage Sensor (done) | time=153ms
+15:12:48.481 INFO  ------------- Gather SCA dependencies on project
+15:12:48.651 INFO  Dependency analysis skipped
+15:12:48.847 INFO  SCM Publisher No SCM system was detected. You can use the 'sonar.scm.provider' property to explicitly specify it.
+15:12:48.910 INFO  CPD Executor 5 files had no CPD blocks
+15:12:49.111 INFO  CPD Executor Calculating CPD for 11 files
+15:12:49.116 INFO  CPD Executor CPD calculation finished (done) | time=196ms
+15:12:53.873 INFO  Analysis report generated in 4061ms, dir size=310.3 kB
+15:12:54.394 INFO  Analysis report compressed in 447ms, zip size=118.4 kB
+15:12:55.439 INFO  Analysis report uploaded in 1001ms
+15:12:55.493 INFO  ANALYSIS SUCCESSFUL, you can find the results at: http://sonarqube:9000/dashboard?id=tiwap
+15:12:55.498 INFO  Note that you will be able to access the updated dashboard once the server has processed the submitted analysis report
+15:12:55.502 INFO  More about the report processing at http://sonarqube:9000/api/ce/task?id=6380618d-9fc8-420a-a968-d418a380109f
+15:12:56.024 INFO  Analysis total time: 1:45.800 min
+15:12:56.938 INFO  SonarScanner Engine completed successfully
+15:12:59.616 INFO  EXECUTION SUCCESS
+15:13:00.500 INFO  Total time: 2:17.635s

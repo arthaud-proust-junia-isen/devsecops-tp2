@@ -1,0 +1,9 @@
+test_payload_classique_ne_renvoie_aucun_utilisateur (test_sqli_low.SqliLowTest.test_payload_classique_ne_renvoie_aucun_utilisateur) ... ok
+test_quote_dans_le_mot_de_passe_ne_casse_pas_la_requete (test_sqli_low.SqliLowTest.test_quote_dans_le_mot_de_passe_ne_casse_pas_la_requete) ... ok
+test_utilisateur_existant_inchange (test_sqli_low.SqliLowTest.test_utilisateur_existant_inchange) ... ok
+test_utilisateur_inconnu (test_sqli_low.SqliLowTest.test_utilisateur_inconnu) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.003s
+
+OK

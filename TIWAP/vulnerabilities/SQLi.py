@@ -19,10 +19,10 @@ def sqli_low(username, password):
         return "User Exists"
 
     try:
-        stmt = "SELECT userid, username FROM users WHERE username='%s' AND password='%s'" \
-               % (str(username), str(password))
+        # requête paramétrée : sqlite3 transmet les valeurs à part, jamais dans le texte SQL
+        stmt = "SELECT userid, username FROM users WHERE username = ? AND password = ?"
 
-        result = cur.execute(stmt)
+        result = cur.execute(stmt, (str(username), str(password)))
 
     except sqlite3.OperationalError as e:
         return e
