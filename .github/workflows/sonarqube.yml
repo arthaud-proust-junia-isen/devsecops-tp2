@@ -2,7 +2,7 @@ name: Tests et analyse SonarQube
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
 
 permissions:
@@ -23,23 +23,78 @@ jobs:
   sonarqube:
     needs: tests
     runs-on: ubuntu-latest
-    # pas de secrets sur les PR venant de forks : on ne lance l'analyse que si le jeton est dispo
-    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # SonarQube jetable, démarré pour ce job : le serveur du TP n'écoute que sur 127.0.0.1.
+    # shortcut: base H2 embarquée et historique perdu à chaque run ; pour garder l'historique,
+    # pointer SONAR_HOST_URL vers un serveur permanent (ou SonarQube Cloud) via les secrets.
+    services:
+      sonarqube:
+        image: sonarqube:community
+        ports:
+          - 9000:9000
+        env:
+          # vm.max_map_count du runner est trop bas pour les contrôles d'Elasticsearch
+          SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    env:
+      SONAR_HOST_URL: http://localhost:9000
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Attendre que SonarQube soit prêt
+        run: |
+          for i in $(seq 1 60); do
+            curl -s "$SONAR_HOST_URL/api/system/status" | grep -q '"status":"UP"' && exit 0
+            sleep 5
+          done
+          echo "SonarQube n'a pas démarré" >&2
+          exit 1
+
+      - name: Changer le mot de passe admin et créer un jeton
+        run: |
+          pass="$(openssl rand -base64 24)Aa1!"
+          echo "::add-mask::$pass"
+          curl -sf -u admin:admin -X POST "$SONAR_HOST_URL/api/users/change_password" \
+            --data-urlencode login=admin --data-urlencode previousPassword=admin \
+            --data-urlencode "password=$pass"
+          token=$(curl -sf -u "admin:$pass" -X POST "$SONAR_HOST_URL/api/user_tokens/generate" \
+            --data-urlencode name=ci --data-urlencode type=USER_TOKEN | jq -r .token)
+          echo "::add-mask::$token"
+          echo "SONAR_TOKEN=$token" >> "$GITHUB_ENV"
+
       - uses: SonarSource/sonarqube-scan-action@v5
         with:
           projectBaseDir: TIWAP
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # fait échouer le job si le Quality Gate est rouge
+
+      # attend la fin du traitement côté serveur et échoue si le Quality Gate est rouge
       - uses: SonarSource/sonarqube-quality-gate-action@v1
         timeout-minutes: 5
         with:
           scanMetadataReportFile: TIWAP/.scannerwork/report-task.txt
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Exporter les résultats
+        if: ${{ !cancelled() }}
+        run: |
+          api() { curl -sf -u "$SONAR_TOKEN:" "$SONAR_HOST_URL/api/$1"; }
+          api "issues/search?components=tiwap&ps=500" > issues.json
+          api "measures/component?component=tiwap&metricKeys=ncloc,vulnerabilities,bugs,code_smells,alert_status" > measures.json
+          {
+            echo "## SonarQube : TIWAP (${GITHUB_REF_NAME})"
+            echo
+            echo "| Mesure | Valeur |"
+            echo "|---|---|"
+            jq -r '.component.measures[] | "| \(.metric) | \(.value) |"' measures.json
+            echo
+            echo "| Règle | Fichier:ligne | Sévérité | Message |"
+            echo "|---|---|---|---|"
+            jq -r '.issues[] | select(any(.impacts[]; .softwareQuality == "SECURITY"))
+              | "| \(.rule) | \(.component | split(":")[1]):\(.line // "-") | \([.impacts[].severity] | join(",")) | \(.message | gsub("\\|"; "/")) |"' issues.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: sonarqube-resultats
+          path: |
+            issues.json
+            measures.json
