@@ -176,9 +176,9 @@ Scans après correction : [`preuves/scan-apres.log`](preuves/scan-apres.log) (Py
 
 Le tableau de bord ne bouge pas, ce qui est cohérent : l'outil ne voyait pas l'injection, il ne peut pas voir sa disparition. La preuve de la correction vient du diff et des tests.
 
-![Projet TIWAP dans SonarQube après le second scan, vue « New Code »](capture-sonarqube.png)
+![Vue d'ensemble du projet TIWAP dans SonarQube après l'analyse complète](capture-sonarqube.png)
 
-La capture date du scan Python seul. La vue « New Code » après correction y affiche un Quality Gate validé et aucun nouveau problème. La couverture est de 0 % sur les 2 lignes modifiées : les tests tournent avec `unittest`, sans rapport de couverture envoyé à SonarQube. Le Quality Gate passe malgré le seuil de 80 %, parce que SonarQube ignore les conditions de couverture quand le nouveau code est très court. La carte « Security Hotspots » est marquée « Deprecated » dans cette version, ce qui explique les 0 hotspots : les résultats de ce type apparaissent directement parmi les problèmes de sécurité.
+La capture montre la vue d'ensemble après l'analyse complète et la correction : 2,4 k lignes, 51 problèmes, 6,2 % de duplication et un Quality Gate en échec sur 2 conditions (nouveaux problèmes et duplication du nouveau code, voir la partie 2). La couverture est de 0 % : les tests tournent avec `unittest`, sans rapport de couverture envoyé à SonarQube. Sur le scan Python seul, le Quality Gate passait malgré le seuil de 80 %, parce que SonarQube ignore les conditions de couverture quand le nouveau code est très court (2 lignes modifiées). La carte « Security Hotspots » est marquée « Deprecated » dans cette version, ce qui explique les 0 hotspots : les résultats de ce type apparaissent directement parmi les problèmes de sécurité.
 
 Restent vulnérables dans `SQLi.py` : `sqli_medium`, `sqli_hard`, les trois `blind_sqli_*` et `secure_login` (ligne 145). Cette dernière est intéressante : elle retire les apostrophes et les guillemets avant d'insérer le nom dans une f-string. C'est un filtrage par liste noire, pas une requête paramétrée, et l'injection reste possible selon le contexte. Ces fonctions sont gardées telles quelles parce que TIWAP sert à s'entraîner sur ces failles.
 
