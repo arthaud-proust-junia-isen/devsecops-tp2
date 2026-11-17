@@ -38,7 +38,8 @@ services:
       - sonarnet
 
   scanner:
-    image: docker.io/sonarsource/sonar-scanner-cli:latest
+    build: ./scanner
+    image: localhost/tp-sonar-scanner
     # profil dédié : `docker compose up -d` ne lance pas le scanner
     profiles: ["scan"]
     depends_on:
