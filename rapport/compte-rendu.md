@@ -73,18 +73,21 @@ Avec le scanner natif, l'analyse couvre aussi les 34 fichiers JS et CSS et les t
 
 | Mesure | Python seul | Analyse complète |
 |---|---|---|
-| Problèmes au total | 32 | 51 |
-| Sécurité | 24 (note E) | 30 (note E) |
+| Problèmes au total | 32 | 52 |
+| Sécurité | 24 (note E) | 31 (note E) |
 | Fiabilité | 8 (note C) | 21 (note C) |
 | Maintenabilité | 6 (note A) | 7 |
 | Quality Gate | OK | En échec |
 
-Les six nouveaux problèmes de sécurité :
+Les sept nouveaux problèmes de sécurité :
 
 | Identifiant | Fichier et ligne | Règle | Sévérité | Constat | Confiance | Action |
 |---|---|---|---|---|---|---|
 | 153d5ddb, 4663c5d6 | init-db.js:8, 12 | javascript:S2068 | Medium | Mots de passe des comptes MongoDB de démonstration en dur, hachés en MD5 sans sel (`21232f29…` est le MD5 de « admin ») | Confirmé | Corriger (données d'initialisation hors du dépôt, hachage robuste) |
 | 6338dacb, 51029145, 44bce632, b8712e50 | templates/dashboard_layout.html:19-21, templates/vulnerabilities/xml-external-entities.html:24 | Web:S5725 | Low | Bootstrap et jQuery chargés depuis un CDN sans attribut `integrity` : un CDN compromis pourrait servir un script modifié | Confirmé | Ajouter SRI ou héberger les fichiers |
+| 9f31aced | certificate/server.key:1 | secrets:S6706 | High | Clé privée TLS commitée dans le dépôt : quiconque lit le dépôt peut usurper le serveur ou déchiffrer son trafic | Confirmé | Révoquer le certificat, retirer la clé de l'historique |
+
+La clé privée n'apparaissait pas dans les premiers scans locaux. Le conteneur ne montait que `TIWAP/`, sans le `.git` qui est à la racine du dépôt, et le scanner prévenait : « Retrieving only language associated files, make sure to run the analysis inside a git repository ». Sans git, l'analyse des secrets ne lit que les fichiers d'un langage connu (53 fichiers), et un `.key` n'en fait pas partie. La CI l'a trouvée au premier run. Depuis que tout le dépôt est monté dans le conteneur, le scan local lit 68 fichiers et trouve 31 vulnérabilités, comme la CI (journal : [`preuves/scan-complet-git.log`](preuves/scan-complet-git.log)).
 
 Les autres nouveaux problèmes concernent la fiabilité des templates, surtout l'accessibilité (champs de formulaire sans `<label>`, tableau sans en-têtes).
 
@@ -171,14 +174,14 @@ Scans après correction : [`preuves/scan-apres.log`](preuves/scan-apres.log) (Py
 | Code vulnérable présent ? | Oui (formatage `%s`) | Non dans `sqli_low` ; oui dans les autres fonctions de `SQLi.py` |
 | Tests de régression | 2 échecs sur 4 | 4 réussites sur 4 |
 | Mesures SonarQube (Python seul) | 24 problèmes de sécurité, note E | 24 problèmes de sécurité, note E |
-| Mesures SonarQube (analyse complète) | 30 problèmes de sécurité, 5 bugs, 16 code smells | Identiques |
+| Mesures SonarQube (analyse complète) | 31 problèmes de sécurité, 5 bugs, 16 code smells | Identiques |
 | Risque résiduel | Élevé | Faible pour `sqli_low`, élevé pour le reste du module |
 
 Le tableau de bord ne bouge pas, ce qui est cohérent : l'outil ne voyait pas l'injection, il ne peut pas voir sa disparition. La preuve de la correction vient du diff et des tests.
 
 ![Vue d'ensemble du projet TIWAP dans SonarQube après l'analyse complète](capture-sonarqube.png)
 
-La capture montre la vue d'ensemble après l'analyse complète et la correction : 2,4 k lignes, 51 problèmes, 6,2 % de duplication et un Quality Gate en échec sur 2 conditions (nouveaux problèmes et duplication du nouveau code, voir la partie 2). La couverture est de 0 % : les tests tournent avec `unittest`, sans rapport de couverture envoyé à SonarQube. Sur le scan Python seul, le Quality Gate passait malgré le seuil de 80 %, parce que SonarQube ignore les conditions de couverture quand le nouveau code est très court (2 lignes modifiées). La carte « Security Hotspots » est marquée « Deprecated » dans cette version, ce qui explique les 0 hotspots : les résultats de ce type apparaissent directement parmi les problèmes de sécurité.
+La capture montre la vue d'ensemble après l'analyse complète et la correction : 2,4 k lignes, 51 problèmes (52 depuis la détection de la clé privée), 6,2 % de duplication et un Quality Gate en échec sur 2 conditions (nouveaux problèmes et duplication du nouveau code, voir la partie 2). La couverture est de 0 % : les tests tournent avec `unittest`, sans rapport de couverture envoyé à SonarQube. Sur le scan Python seul, le Quality Gate passait malgré le seuil de 80 %, parce que SonarQube ignore les conditions de couverture quand le nouveau code est très court (2 lignes modifiées). La carte « Security Hotspots » est marquée « Deprecated » dans cette version, ce qui explique les 0 hotspots : les résultats de ce type apparaissent directement parmi les problèmes de sécurité.
 
 Restent vulnérables dans `SQLi.py` : `sqli_medium`, `sqli_hard`, les trois `blind_sqli_*` et `secure_login` (ligne 145). Cette dernière est intéressante : elle retire les apostrophes et les guillemets avant d'insérer le nom dans une f-string. C'est un filtrage par liste noire, pas une requête paramétrée, et l'injection reste possible selon le contexte. Ces fonctions sont gardées telles quelles parce que TIWAP sert à s'entraîner sur ces failles.
 
@@ -217,7 +220,20 @@ Le nombre brut d'anomalies ne figure pas dans ce tableau. Il dépend des règles
 
 ## 9. Automatisation en CI
 
-Le workflow [`.github/workflows/sonarqube.yml`](../.github/workflows/sonarqube.yml) lance les tests de non-régression, puis l'analyse SonarQube, puis la vérification du Quality Gate, qui fait échouer le job s'il est rouge. `SONAR_TOKEN` et `SONAR_HOST_URL` sont des secrets du dépôt. L'analyse ne tourne pas sur les pull requests venant d'un fork, qui n'ont pas accès aux secrets. Le workflow n'a pas encore été exécuté : il faut un dépôt GitHub et un serveur SonarQube joignable depuis Internet, ce qui n'est pas le cas du serveur de ce TP, limité à `127.0.0.1`.
+Le dépôt est publié sur GitHub : [arthaud-proust-junia-isen/devsecops-tp2-sonarqube](https://github.com/arthaud-proust-junia-isen/devsecops-tp2-sonarqube). Le workflow [`.github/workflows/sonarqube.yml`](../.github/workflows/sonarqube.yml) tourne à chaque push, sur `main` comme sur toutes les branches, et sur les pull requests.
+
+Le serveur SonarQube du TP n'écoute que sur `127.0.0.1` : GitHub ne peut pas le joindre. Le job démarre donc son propre SonarQube Community comme conteneur de service, avec la même image que le TP :
+
+1. les tests de non-régression passent d'abord, dans un job séparé ;
+2. le job attend que SonarQube réponde `UP` ;
+3. il remplace le mot de passe `admin` par un mot de passe aléatoire et génère un jeton. Les deux sont masqués dans les journaux avec `::add-mask::` et disparaissent avec le conteneur ;
+4. `sonarqube-scan-action@v6` analyse `TIWAP/` ;
+5. `sonarqube-quality-gate-action` attend la fin du traitement et fait échouer le job si le Quality Gate est rouge ;
+6. les problèmes de sécurité sont écrits dans le résumé du run, et l'export JSON complet est publié en artefact `sonarqube-resultats`.
+
+Aucun secret n'est à configurer dans le dépôt. Le serveur est jetable, ce qui a deux conséquences. Il n'y a pas d'historique d'un run à l'autre. Et chaque run est une première analyse, donc sans « nouveau code » : le Quality Gate passe toujours, il ne bloque rien en l'état. Pour un vrai contrôle avant fusion, il faudrait un serveur permanent (ou SonarQube Cloud), joint via les secrets `SONAR_HOST_URL` et `SONAR_TOKEN`.
+
+Les runs sur `main` et sur `fix/sql-injection-lab` sont verts, en moins de 2 minutes. Le résultat est le même qu'en local : 2 367 lignes, 31 vulnérabilités, 5 bugs, 16 code smells, et toujours rien sur l'injection SQL.
 
 ## 10. Réponses aux questions
 
@@ -230,13 +246,13 @@ Le workflow [`.github/workflows/sonarqube.yml`](../.github/workflows/sonarqube.y
 7. Un résultat peut être un faux positif, et sa sévérité ne dit rien de l'exposition réelle ni des données touchées. Il faut lire le code pour confirmer le résultat et évaluer le risque dans son contexte avant de mobiliser une équipe.
 8. Il ne faut pas conclure qu'il n'y en a pas. On vérifie les règles actives et l'édition (ici, la taint analysis est absente de la Community), on fait une revue manuelle des requêtes et des entrées, on complète avec un test dynamique (sqlmap, DAST), et on documente la limite dans le rapport. C'est ce qui a été fait ici.
 9. On croise la criticité de l'application et des données, l'exposition (Internet ou réseau interne), la facilité d'exploitation, l'impact sur la confidentialité, l'intégrité et la disponibilité, et les mesures compensatoires (WAF, droits réduits sur la base). Une injection SQL sur une application métier critique exposée est une P1 : correctif sous quelques jours, mesure de contournement immédiate si besoin.
-10. Le total dépend du nombre de règles et de la taille du code. Il mélange des défauts mineurs et des failles critiques, et il ne compte que ce que l'outil sait détecter. Dans ce TP, il ne bouge pas après une correction réelle, et il passe de 24 à 30 sans aucun changement de code, simplement parce que le périmètre analysé s'élargit.
+10. Le total dépend du nombre de règles et de la taille du code. Il mélange des défauts mineurs et des failles critiques, et il ne compte que ce que l'outil sait détecter. Dans ce TP, il ne bouge pas après une correction réelle, et il passe de 24 à 31 sans aucun changement de code, simplement parce que le périmètre analysé s'élargit.
 11. Le jeton doit être un secret du CI, jamais écrit dans le dépôt ni affiché dans les journaux. Il doit être limité à l'analyse d'un seul projet, et renouvelé ou révoqué régulièrement. Il ne doit pas être exposé aux pull requests venant de forks. Le serveur SonarQube doit être joignable en HTTPS, et les images et actions du pipeline épinglées à une version.
 12. Il faut un test de non-régression qui échoue avant le correctif et passe après, exécuté en CI à chaque modification pour que la correction ne puisse pas disparaître sans bruit. On y ajoute la revue du diff, un nouveau scan, et si possible un retest dynamique. Le ticket ne se ferme qu'avec ces preuves.
 
 ## 11. Limites de l'analyse statique
 
-Sur TIWAP, l'outil a trouvé 30 vraies faiblesses en quelques minutes : clé secrète en dur, JWT non vérifié, TLS désactivé, MD5, scripts tiers sans contrôle d'intégrité. Il est passé à côté de la faille principale du module étudié. L'édition Community n'a pas la taint analysis, et la règle de formatage SQL, pourtant active, n'a pas reconnu une construction aussi courante que `"..." % (...)` suivie de `execute`. Les huit `| safe` des templates, qui sont les XSS du laboratoire, passent aussi inaperçus.
+Sur TIWAP, l'outil a trouvé 31 vraies faiblesses en quelques minutes : clé secrète en dur, clé privée TLS commitée, JWT non vérifié, TLS désactivé, MD5, scripts tiers sans contrôle d'intégrité. Il est passé à côté de la faille principale du module étudié. L'édition Community n'a pas la taint analysis, et la règle de formatage SQL, pourtant active, n'a pas reconnu une construction aussi courante que `"..." % (...)` suivie de `execute`. Les huit `| safe` des templates, qui sont les XSS du laboratoire, passent aussi inaperçus.
 
 L'environnement compte autant que les règles : avec l'image officielle sous émulation, la moitié du code (templates, JS, CSS) sortait du périmètre sans que le tableau de bord le montre. Le Quality Gate, lui, a changé de couleur quand le périmètre s'est élargi, sans qu'aucune ligne de code ne change.
 
