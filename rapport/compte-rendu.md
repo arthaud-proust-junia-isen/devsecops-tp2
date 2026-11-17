@@ -11,7 +11,7 @@ Le fichier [`compose.yaml`](../compose.yaml) décrit trois services sur un rése
 |---|---|---|
 | `db` | `postgres:17-alpine` | Base de SonarQube (projets, analyses, historique, utilisateurs). Healthcheck `pg_isready`. |
 | `sonarqube` | `sonarqube:community` | Serveur et interface web, publiés sur `127.0.0.1:9000` uniquement. Démarre quand la base est saine. |
-| `scanner` | `sonarsource/sonar-scanner-cli` | Analyse `./TIWAP`, monté dans `/usr/src`, et envoie le rapport à `http://sonarqube:9000`. |
+| `scanner` | image construite depuis [`scanner/Dockerfile`](../scanner/Dockerfile) | Analyse `./TIWAP`, monté dans `/usr/src`, et envoie le rapport à `http://sonarqube:9000`. |
 
 Quatre volumes nommés gardent les données de PostgreSQL et de SonarQube entre deux redémarrages. Le mot de passe de la base vient de `.env`, ignoré par git ; `.env.example` sert de modèle. Le jeton du scanner passe par une variable d'environnement et n'est écrit dans aucun fichier versionné.
 
@@ -25,7 +25,9 @@ podman compose --profile scan run --rm scanner
 Deux ajustements ont été nécessaires sur cette machine :
 
 - podman refuse les noms d'images courts sans demande interactive, les images sont donc écrites en entier (`docker.io/library/...`) ;
-- l'image du scanner n'existe qu'en amd64. Sous émulation, l'analyseur JavaScript de SonarQube ne répond plus et fait échouer tout le scan. Comme le TP porte sur le Python, les fichiers JS, HTML et CSS sont exclus dans `sonar-project.properties`. Les templates Jinja (et les XSS qu'ils contiennent) ne sont donc pas analysés.
+- l'image officielle `sonarsource/sonar-scanner-cli` n'existe qu'en amd64. Sous émulation, son analyseur JavaScript ne répond plus et fait échouer tout le scan. Les deux premiers scans ont donc été faits en excluant les fichiers JS, HTML et CSS. Le scanner est maintenant construit en arm64 natif : SonarScanner CLI 8.4 (zip générique, sans JRE embarqué) sur `amazoncorretto:21-alpine`, avec Node.js pour l'analyseur JS. SonarQube 26.11 refuse Java 17 (« Java 17 is not supported »), d'où Java 21. Le téléchargement automatique de JRE est désactivé, car le JRE fourni par le serveur est compilé pour glibc et ne tourne pas sur Alpine.
+
+La machine virtuelle podman a 3,9 Go de mémoire. SonarQube a été tué une fois par manque de mémoire (`OOMKilled=true`) quand un scan a démarré pendant que le serveur traitait encore le rapport précédent. Il suffit de laisser le traitement finir entre deux scans, ou de donner plus de mémoire à la VM.
 
 **Question 1.** SonarQube garde dans PostgreSQL tout ce qui doit survivre au conteneur : configuration, projets, historique des analyses, statut des anomalies, comptes et jetons. Le conteneur applicatif peut être supprimé ou mis à jour sans perte. La base embarquée H2 n'est prévue que pour l'évaluation, et une base séparée se sauvegarde et se supervise avec les outils habituels.
 
@@ -64,6 +66,31 @@ SonarQube ne signale aucune injection SQL dans `vulnerabilities/SQLi.py`. Le seu
 - la règle `python:S3649`, qui suit une entrée HTTP jusqu'à la requête (taint analysis), n'existe pas dans l'édition Community : l'API répond `Rule not found`. Cette analyse est réservée aux éditions payantes.
 
 L'injection a donc été identifiée par revue manuelle, comme le demande le TP dans ce cas.
+
+### Analyse complète avec le scanner arm64
+
+Avec le scanner natif, l'analyse couvre aussi les 34 fichiers JS et CSS et les templates HTML : 2 367 lignes au lieu de 1 084 (journal : [`preuves/scan-complet-avant.log`](preuves/scan-complet-avant.log), sur la version vulnérable de `SQLi.py`).
+
+| Mesure | Python seul | Analyse complète |
+|---|---|---|
+| Problèmes au total | 32 | 51 |
+| Sécurité | 24 (note E) | 30 (note E) |
+| Fiabilité | 8 (note C) | 21 (note C) |
+| Maintenabilité | 6 (note A) | 7 |
+| Quality Gate | OK | En échec |
+
+Les six nouveaux problèmes de sécurité :
+
+| Identifiant | Fichier et ligne | Règle | Sévérité | Constat | Confiance | Action |
+|---|---|---|---|---|---|---|
+| 153d5ddb, 4663c5d6 | init-db.js:8, 12 | javascript:S2068 | Medium | Mots de passe des comptes MongoDB de démonstration en dur, hachés en MD5 sans sel (`21232f29…` est le MD5 de « admin ») | Confirmé | Corriger (données d'initialisation hors du dépôt, hachage robuste) |
+| 6338dacb, 51029145, 44bce632, b8712e50 | templates/dashboard_layout.html:19-21, templates/vulnerabilities/xml-external-entities.html:24 | Web:S5725 | Low | Bootstrap et jQuery chargés depuis un CDN sans attribut `integrity` : un CDN compromis pourrait servir un script modifié | Confirmé | Ajouter SRI ou héberger les fichiers |
+
+Les autres nouveaux problèmes concernent la fiabilité des templates, surtout l'accessibilité (champs de formulaire sans `<label>`, tableau sans en-têtes).
+
+L'analyse des templates ne signale pas les XSS du laboratoire. Huit templates affichent une donnée avec le filtre Jinja `| safe`, qui désactive l'échappement (par exemple `templates/vulnerabilities/reflected-xss.html:19`). SonarQube n'en relève aucun.
+
+Le Quality Gate passe en échec parce que la période « nouveau code » démarre à la première analyse (mode « version précédente »). Tous les fichiers web, analysés pour la première fois, comptent donc comme du nouveau code : 19 nouveaux problèmes et 13,5 % de lignes dupliquées, au-delà des seuils de 0 et 3 %. L'échec vient de l'élargissement du périmètre, pas de la correction.
 
 ## 3. Examen du code
 
@@ -134,7 +161,7 @@ Avant correction, deux tests sur quatre échouent : le payload renvoie les cinq 
 
 ## 6. Comparaison avant et après
 
-Second scan : [`preuves/scan-apres.log`](preuves/scan-apres.log).
+Scans après correction : [`preuves/scan-apres.log`](preuves/scan-apres.log) (Python seul) et [`preuves/scan-complet-apres.log`](preuves/scan-complet-apres.log) (analyse complète).
 
 | Critère | Avant correction | Après correction |
 |---|---|---|
@@ -143,14 +170,15 @@ Second scan : [`preuves/scan-apres.log`](preuves/scan-apres.log).
 | Emplacement | `vulnerabilities/SQLi.py:22-25` | Même endroit, requête paramétrée |
 | Code vulnérable présent ? | Oui (formatage `%s`) | Non dans `sqli_low` ; oui dans les autres fonctions de `SQLi.py` |
 | Tests de régression | 2 échecs sur 4 | 4 réussites sur 4 |
-| Mesures SonarQube | 24 problèmes de sécurité, note E | 24 problèmes de sécurité, note E |
+| Mesures SonarQube (Python seul) | 24 problèmes de sécurité, note E | 24 problèmes de sécurité, note E |
+| Mesures SonarQube (analyse complète) | 30 problèmes de sécurité, 5 bugs, 16 code smells | Identiques |
 | Risque résiduel | Élevé | Faible pour `sqli_low`, élevé pour le reste du module |
 
 Le tableau de bord ne bouge pas, ce qui est cohérent : l'outil ne voyait pas l'injection, il ne peut pas voir sa disparition. La preuve de la correction vient du diff et des tests.
 
 ![Projet TIWAP dans SonarQube après le second scan, vue « New Code »](capture-sonarqube.png)
 
-La vue « New Code » après correction affiche un Quality Gate validé et aucun nouveau problème. La couverture est de 0 % sur les 2 lignes modifiées : les tests tournent avec `unittest`, sans rapport de couverture envoyé à SonarQube. Le Quality Gate passe malgré le seuil de 80 %, parce que SonarQube ignore les conditions de couverture quand le nouveau code est très court. La carte « Security Hotspots » est marquée « Deprecated » dans cette version, ce qui explique les 0 hotspots : les résultats de ce type apparaissent directement parmi les problèmes de sécurité.
+La capture date du scan Python seul. La vue « New Code » après correction y affiche un Quality Gate validé et aucun nouveau problème. La couverture est de 0 % sur les 2 lignes modifiées : les tests tournent avec `unittest`, sans rapport de couverture envoyé à SonarQube. Le Quality Gate passe malgré le seuil de 80 %, parce que SonarQube ignore les conditions de couverture quand le nouveau code est très court. La carte « Security Hotspots » est marquée « Deprecated » dans cette version, ce qui explique les 0 hotspots : les résultats de ce type apparaissent directement parmi les problèmes de sécurité.
 
 Restent vulnérables dans `SQLi.py` : `sqli_medium`, `sqli_hard`, les trois `blind_sqli_*` et `secure_login` (ligne 145). Cette dernière est intéressante : elle retire les apostrophes et les guillemets avant d'insérer le nom dans une f-string. C'est un filtrage par liste noire, pas une requête paramétrée, et l'injection reste possible selon le contexte. Ces fonctions sont gardées telles quelles parce que TIWAP sert à s'entraîner sur ces failles.
 
@@ -208,7 +236,9 @@ Le workflow [`.github/workflows/sonarqube.yml`](../.github/workflows/sonarqube.y
 
 ## 11. Limites de l'analyse statique
 
-Sur TIWAP, l'outil a trouvé 24 vraies faiblesses en quelques minutes : clé secrète en dur, JWT non vérifié, TLS désactivé, MD5. Il est passé à côté de la faille principale du module étudié. L'édition Community n'a pas la taint analysis, et la règle de formatage SQL, pourtant active, n'a pas reconnu une construction aussi courante que `"..." % (...)` suivie de `execute`. L'exclusion des fichiers web, imposée par l'émulation, a aussi retiré les templates du périmètre.
+Sur TIWAP, l'outil a trouvé 30 vraies faiblesses en quelques minutes : clé secrète en dur, JWT non vérifié, TLS désactivé, MD5, scripts tiers sans contrôle d'intégrité. Il est passé à côté de la faille principale du module étudié. L'édition Community n'a pas la taint analysis, et la règle de formatage SQL, pourtant active, n'a pas reconnu une construction aussi courante que `"..." % (...)` suivie de `execute`. Les huit `| safe` des templates, qui sont les XSS du laboratoire, passent aussi inaperçus.
+
+L'environnement compte autant que les règles : avec l'image officielle sous émulation, la moitié du code (templates, JS, CSS) sortait du périmètre sans que le tableau de bord le montre. Le Quality Gate, lui, a changé de couleur quand le périmètre s'est élargi, sans qu'aucune ligne de code ne change.
 
 Un tableau de bord SonarQube sans alerte SQL ne prouve donc pas l'absence d'injection. L'outil sert à trouver vite les défauts connus. La revue de code, les tests de non-régression et les tests dynamiques restent nécessaires pour le reste, et pour prouver qu'une correction tient.
 
