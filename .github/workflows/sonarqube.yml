@@ -62,7 +62,7 @@ jobs:
           echo "::add-mask::$token"
           echo "SONAR_TOKEN=$token" >> "$GITHUB_ENV"
 
-      - uses: SonarSource/sonarqube-scan-action@v5
+      - uses: SonarSource/sonarqube-scan-action@v6
         with:
           projectBaseDir: TIWAP
 
