@@ -48,8 +48,9 @@ services:
       SONAR_HOST_URL: http://sonarqube:9000
       SONAR_TOKEN: ${SONAR_TOKEN:-}
     volumes:
-      - ./TIWAP:/usr/src
-    working_dir: /usr/src
+      # tout le dépôt est monté pour que le scanner voie le .git (analyse des secrets sur tous les fichiers suivis)
+      - ./:/usr/src
+    working_dir: /usr/src/TIWAP
     networks:
       - sonarnet
 
