@@ -2,3 +2,6 @@
 .scannerwork/
 __pycache__/
 .pytest_cache/
+
+# consignes du TP, gardées en local
+TP2*.md

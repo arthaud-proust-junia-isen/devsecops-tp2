@@ -5,13 +5,13 @@ Environnement : macOS sur processeur ARM, podman 6.1.4 et podman-compose 1.6.0 �
 
 ## 1. Architecture déployée
 
-Le fichier [`compose.yaml`](../compose.yaml) décrit trois services sur un réseau privé `sonarnet` :
+Le fichier [`compose.yaml`](compose.yaml) décrit trois services sur un réseau privé `sonarnet` :
 
 | Service | Image | Rôle |
 |---|---|---|
 | `db` | `postgres:17-alpine` | Base de SonarQube (projets, analyses, historique, utilisateurs). Healthcheck `pg_isready`. |
 | `sonarqube` | `sonarqube:community` | Serveur et interface web, publiés sur `127.0.0.1:9000` uniquement. Démarre quand la base est saine. |
-| `scanner` | image construite depuis [`scanner/Dockerfile`](../scanner/Dockerfile) | Analyse `./TIWAP`, monté dans `/usr/src`, et envoie le rapport à `http://sonarqube:9000`. |
+| `scanner` | image construite depuis [`scanner/Dockerfile`](scanner/Dockerfile) | Analyse `./TIWAP`, monté dans `/usr/src`, et envoie le rapport à `http://sonarqube:9000`. |
 
 Quatre volumes nommés gardent les données de PostgreSQL et de SonarQube entre deux redémarrages. Le mot de passe de la base vient de `.env`, ignoré par git ; `.env.example` sert de modèle. Le jeton du scanner passe par une variable d'environnement et n'est écrit dans aucun fichier versionné.
 
@@ -35,7 +35,7 @@ La machine virtuelle podman a 3,9 Go de mémoire. SonarQube a été tué une foi
 
 ## 2. Analyse initiale
 
-Le scan a réussi (journal : [`preuves/scan-avant.log`](preuves/scan-avant.log)). Il porte sur 1 084 lignes de Python et un Dockerfile, avec le profil par défaut « Sonar way core » (232 règles).
+Le scan a réussi (journal : [`preuves/scan-avant.log`](rapport/preuves/scan-avant.log)). Il porte sur 1 084 lignes de Python et un Dockerfile, avec le profil par défaut « Sonar way core » (232 règles).
 
 | Mesure | Valeur |
 |---|---|
@@ -46,7 +46,7 @@ Le scan a réussi (journal : [`preuves/scan-avant.log`](preuves/scan-avant.log))
 | Security Hotspots | 0 |
 | Quality Gate | OK, car une première analyse n'a pas de « nouveau code » |
 
-La liste complète est dans [`preuves/resultats-avant.md`](preuves/resultats-avant.md). Voici les résultats retenus, qualifiés après lecture du code :
+La liste complète est dans [`preuves/resultats-avant.md`](rapport/preuves/resultats-avant.md). Voici les résultats retenus, qualifiés après lecture du code :
 
 | Identifiant | Fichier et ligne | Règle | Type | Impact potentiel | Confiance | Action |
 |---|---|---|---|---|---|---|
@@ -69,7 +69,7 @@ L'injection a donc été identifiée par revue manuelle, comme le demande le TP 
 
 ### Analyse complète avec le scanner arm64
 
-Avec le scanner natif, l'analyse couvre aussi les 34 fichiers JS et CSS et les templates HTML : 2 367 lignes au lieu de 1 084 (journal : [`preuves/scan-complet-avant.log`](preuves/scan-complet-avant.log), sur la version vulnérable de `SQLi.py`).
+Avec le scanner natif, l'analyse couvre aussi les 34 fichiers JS et CSS et les templates HTML : 2 367 lignes au lieu de 1 084 (journal : [`preuves/scan-complet-avant.log`](rapport/preuves/scan-complet-avant.log), sur la version vulnérable de `SQLi.py`).
 
 | Mesure | Python seul | Analyse complète |
 |---|---|---|
@@ -87,7 +87,7 @@ Les sept nouveaux problèmes de sécurité :
 | 6338dacb, 51029145, 44bce632, b8712e50 | templates/dashboard_layout.html:19-21, templates/vulnerabilities/xml-external-entities.html:24 | Web:S5725 | Low | Bootstrap et jQuery chargés depuis un CDN sans attribut `integrity` : un CDN compromis pourrait servir un script modifié | Confirmé | Ajouter SRI ou héberger les fichiers |
 | 9f31aced | certificate/server.key:1 | secrets:S6706 | High | Clé privée TLS commitée dans le dépôt : quiconque lit le dépôt peut usurper le serveur ou déchiffrer son trafic | Confirmé | Révoquer le certificat, retirer la clé de l'historique |
 
-La clé privée n'apparaissait pas dans les premiers scans locaux. Le conteneur ne montait que `TIWAP/`, sans le `.git` qui est à la racine du dépôt, et le scanner prévenait : « Retrieving only language associated files, make sure to run the analysis inside a git repository ». Sans git, l'analyse des secrets ne lit que les fichiers d'un langage connu (53 fichiers), et un `.key` n'en fait pas partie. La CI l'a trouvée au premier run. Depuis que tout le dépôt est monté dans le conteneur, le scan local lit 68 fichiers et trouve 31 vulnérabilités, comme la CI (journal : [`preuves/scan-complet-git.log`](preuves/scan-complet-git.log)).
+La clé privée n'apparaissait pas dans les premiers scans locaux. Le conteneur ne montait que `TIWAP/`, sans le `.git` qui est à la racine du dépôt, et le scanner prévenait : « Retrieving only language associated files, make sure to run the analysis inside a git repository ». Sans git, l'analyse des secrets ne lit que les fichiers d'un langage connu (53 fichiers), et un `.key` n'en fait pas partie. La CI l'a trouvée au premier run. Depuis que tout le dépôt est monté dans le conteneur, le scan local lit 68 fichiers et trouve 31 vulnérabilités, comme la CI (journal : [`preuves/scan-complet-git.log`](rapport/preuves/scan-complet-git.log)).
 
 Les autres nouveaux problèmes concernent la fiabilité des templates, surtout l'accessibilité (champs de formulaire sans `<label>`, tableau sans en-têtes).
 
@@ -125,7 +125,7 @@ Avec `username = x' OR '1'='1' --`, la requête devient :
 SELECT userid, username FROM users WHERE username='x' OR '1'='1' --' AND password='...'
 ```
 
-L'apostrophe ferme la chaîne, `OR '1'='1'` rend la condition toujours vraie et `--` met en commentaire le contrôle du mot de passe. La fonction renvoie alors les cinq comptes de la base. Le test l'a vérifié avant correction ([`preuves/tests-avant-correction.txt`](preuves/tests-avant-correction.txt)). Une simple apostrophe dans le mot de passe fait aussi planter la requête, et le message d'erreur SQLite est renvoyé à l'utilisateur, ce qui l'aide à ajuster son attaque.
+L'apostrophe ferme la chaîne, `OR '1'='1'` rend la condition toujours vraie et `--` met en commentaire le contrôle du mot de passe. La fonction renvoie alors les cinq comptes de la base. Le test l'a vérifié avant correction ([`preuves/tests-avant-correction.txt`](rapport/preuves/tests-avant-correction.txt)). Une simple apostrophe dans le mot de passe fait aussi planter la requête, et le message d'erreur SQLite est renvoyé à l'utilisateur, ce qui l'aide à ajuster son attaque.
 
 ## 4. Correction
 
@@ -147,7 +147,7 @@ Le comportement visible ne change pas : un utilisateur existant donne toujours �
 
 ## 5. Tests de non-régression
 
-TIWAP n'avait aucun test. J'ai ajouté [`TIWAP/tests/test_sqli_low.py`](../TIWAP/tests/test_sqli_low.py), qui travaille sur une copie temporaire de `TIWAP.db` :
+TIWAP n'avait aucun test. J'ai ajouté [`TIWAP/tests/test_sqli_low.py`](TIWAP/tests/test_sqli_low.py), qui travaille sur une copie temporaire de `TIWAP.db` :
 
 | Test | Vérifie |
 |---|---|
@@ -160,11 +160,11 @@ TIWAP n'avait aucun test. J'ai ajouté [`TIWAP/tests/test_sqli_low.py`](../TIWAP
 cd TIWAP && python3 -m unittest discover -s tests -v
 ```
 
-Avant correction, deux tests sur quatre échouent : le payload renvoie les cinq comptes et l'apostrophe déclenche `OperationalError`. Après correction, les quatre passent ([`preuves/tests-apres-correction.txt`](preuves/tests-apres-correction.txt)). Le test a été commité avant le correctif, l'historique git montre donc l'échec puis la réussite.
+Avant correction, deux tests sur quatre échouent : le payload renvoie les cinq comptes et l'apostrophe déclenche `OperationalError`. Après correction, les quatre passent ([`preuves/tests-apres-correction.txt`](rapport/preuves/tests-apres-correction.txt)). Le test a été commité avant le correctif, l'historique git montre donc l'échec puis la réussite.
 
 ## 6. Comparaison avant et après
 
-Scans après correction : [`preuves/scan-apres.log`](preuves/scan-apres.log) (Python seul) et [`preuves/scan-complet-apres.log`](preuves/scan-complet-apres.log) (analyse complète).
+Scans après correction : [`preuves/scan-apres.log`](rapport/preuves/scan-apres.log) (Python seul) et [`preuves/scan-complet-apres.log`](rapport/preuves/scan-complet-apres.log) (analyse complète).
 
 | Critère | Avant correction | Après correction |
 |---|---|---|
@@ -179,7 +179,7 @@ Scans après correction : [`preuves/scan-apres.log`](preuves/scan-apres.log) (Py
 
 Le tableau de bord ne bouge pas, ce qui est cohérent : l'outil ne voyait pas l'injection, il ne peut pas voir sa disparition. La preuve de la correction vient du diff et des tests.
 
-![Vue d'ensemble du projet TIWAP dans SonarQube après l'analyse complète](capture-sonarqube.png)
+![Vue d'ensemble du projet TIWAP dans SonarQube après l'analyse complète](rapport/capture-sonarqube.png)
 
 La capture montre la vue d'ensemble après l'analyse complète et la correction : 2,4 k lignes, 51 problèmes (52 depuis la détection de la clé privée), 6,2 % de duplication et un Quality Gate en échec sur 2 conditions (nouveaux problèmes et duplication du nouveau code, voir la partie 2). La couverture est de 0 % : les tests tournent avec `unittest`, sans rapport de couverture envoyé à SonarQube. Sur le scan Python seul, le Quality Gate passait malgré le seuil de 80 %, parce que SonarQube ignore les conditions de couverture quand le nouveau code est très court (2 lignes modifiées). La carte « Security Hotspots » est marquée « Deprecated » dans cette version, ce qui explique les 0 hotspots : les résultats de ce type apparaissent directement parmi les problèmes de sécurité.
 
@@ -220,7 +220,7 @@ Le nombre brut d'anomalies ne figure pas dans ce tableau. Il dépend des règles
 
 ## 9. Automatisation en CI
 
-Le dépôt est publié sur GitHub : [arthaud-proust-junia-isen/devsecops-tp2-sonarqube](https://github.com/arthaud-proust-junia-isen/devsecops-tp2-sonarqube). Le workflow [`.github/workflows/sonarqube.yml`](../.github/workflows/sonarqube.yml) tourne à chaque push, sur `main` comme sur toutes les branches, et sur les pull requests.
+Le dépôt est publié sur GitHub : [arthaud-proust-junia-isen/devsecops-tp2-sonarqube](https://github.com/arthaud-proust-junia-isen/devsecops-tp2-sonarqube). Le workflow [`.github/workflows/sonarqube.yml`](.github/workflows/sonarqube.yml) tourne à chaque push, sur `main` comme sur toutes les branches, et sur les pull requests.
 
 Le serveur SonarQube du TP n'écoute que sur `127.0.0.1` : GitHub ne peut pas le joindre. Le job démarre donc son propre SonarQube Community comme conteneur de service, avec la même image que le TP :
 
